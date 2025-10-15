@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Code Review Assistant</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    header {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 20px 0;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .header-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(45deg, #fff, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-subtitle {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      font-weight: 300;
+    }
+
+    nav {
+      display: flex;
+      gap: 8px;
+      margin: 12px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .main-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      overflow: hidden;
+      animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .tabs {
+      display: flex;
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 15px 15px 0 0;
+      padding: 0;
+      margin: 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 18px 24px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: #6b7280;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .tab-btn:first-child {
+      border-radius: 15px 0 0 0;
+    }
+
+    .tab-btn:last-child {
+      border-radius: 0 15px 0 0;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .tab-btn:hover:not(.active) {
+      background: rgba(102, 126, 234, 0.1);
+      color: #667eea;
+    }
+
+    .tab-content {
+      padding: 30px;
+    }
+
+    .upload-section {
+      background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 25px;
+      border: 2px dashed rgba(102, 126, 234, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .upload-section:hover {
+      border-color: rgba(102, 126, 234, 0.6);
+      background: linear-gradient(135deg, #f1f5f9, #ddd6fe);
+    }
+
+    .form-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .review-box {
+      background: #fff;
+      border-left: 5px solid #667eea;
+      padding: 25px;
+      margin-top: 20px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    .review-box:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Code blocks - dark compiler style */
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.4;
+      margin: 12px 0;
+      border: 1px solid #333;
+    }
+
+    /* Inline code */
+    code {
+      background: #f1f1f1;
+      color: #d73a49;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+
+    /* Code inside pre blocks */
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    /* Ensure blockquotes are styled properly */
+    .review-box blockquote {
+      border-left: 4px solid #e5e7eb;
+      margin: 16px 0;
+      padding: 8px 16px;
+      background: #f9fafb;
+      color: #6b7280;
+    }
+
+    footer {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.8);
+      padding: 30px;
+      margin-top: 40px;
+      font-weight: 300;
+    }
+
+    .small {
+      font-size: 0.9rem;
+      color: #444;
+    }
+
+    label {
+      font-weight: 500;
+      color: #374151;
+      font-size: 0.95rem;
+    }
+
+    select, input[type=file] {
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+      background: #fff;
+    }
+
+    select:focus, input[type=file]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #loading {
+      margin-top: 15px;
+      padding: 15px;
+      background: linear-gradient(135deg, #ddd6fe, #e0e7ff);
+      border-radius: 10px;
+      color: #5b21b6;
+      font-weight: 500;
+      text-align: center;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Make marked parsed content readable */
+    .review-box h1, .review-box h2, .review-box h3, .review-box h4, .review-box h5, .review-box h6 {
+      color: #1f2937;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .review-box h1 { font-size: 1.5em; }
+    .review-box h2 { font-size: 1.3em; }
+    .review-box h3 { font-size: 1.1em; margin-top: 0; }
+    .review-box h4 { font-size: 1em; }
+
+    .review-box p, .review-box li {
+      line-height: 1.6;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .review-box ul, .review-box ol {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+
+    .review-box strong {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .review-box em {
+      font-style: italic;
+      color: #6b7280;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: #2563eb;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="header-title">🚀 AI Code Review Assistant</div>
+      <div class="header-subtitle">Powered by Google Gemini • Professional Code Analysis</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="main-card">
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-review-btn" onclick="showTab('review')">🔍 AI Review</button>
+        <button class="tab-btn" id="tab-reports-btn" onclick="showTab('reports')">📊 Past Reports</button>
+        <button class="tab-btn" id="tab-about-btn" onclick="showTab('about')">⚙️ About</button>
+      </div>
+
+      <!-- AI Review Tab -->
+      <div id="tab-review" class="tab-content">
+        <div class="upload-section">
+          <div class="form-group">
+            <label for="language">Programming Language:</label>
+            <select id="language">
+              <option value="python">🐍 Python</option>
+              <option value="javascript">🟨 JavaScript</option>
+              <option value="java">☕ Java</option>
+              <option value="c">🔧 C</option>
+              <option value="cpp">⚡ C++</option>
+              <option value="csharp">🔷 C#</option>
+              <option value="go">🐹 Go</option>
+              <option value="ruby">💎 Ruby</option>
+            </select>
+
+            <input type="file" id="files" multiple accept=".py,.js,.java,.cpp,.c,.cs,.go,.rb,.txt" />
+            <button onclick="uploadFiles()">🚀 Analyze Code</button>
+          </div>
+          <div id="loading" style="display:none">🔄 Analyzing your code with AI...</div>
+        </div>
+
+        <div id="results"></div>
+      </div>
+
+      <!-- Past Reports Tab -->
+      <div id="tab-reports" style="display:none" class="tab-content">
+        <h3 style="color: #374151; margin-bottom: 20px; font-size: 1.5rem;">📊 Saved Reports</h3>
+        <div id="pastReports"></div>
+      </div>
+
+      <!-- About Tab -->
+      <div id="tab-about" style="display:none" class="tab-content">
+        <h3 style="color: #374151; margin-bottom: 20px; font-size: 1.5rem;">⚙️ About This Application</h3>
+        <div style="background: linear-gradient(135deg, #f8fafc, #e2e8f0); padding: 25px; border-radius: 15px; margin-bottom: 20px;">
+          <p style="margin-bottom: 15px; line-height: 1.6;">This AI-powered code review assistant analyzes your source files using Google Gemini's advanced language model. Upload your code files to receive comprehensive feedback on code quality, security, and best practices.</p>
+          <h4 style="color: #667eea; margin: 20px 0 10px 0;">✨ Features</h4>
+          <ul style="line-height: 1.6; color: #6b7280;">
+            <li>Multi-language support (Python, JavaScript, Java, C++, C#, Go, Ruby)</li>
+            <li>Comprehensive code analysis with severity ratings</li>
+            <li>Security vulnerability detection</li>
+            <li>Best practices recommendations</li>
+            <li>Downloadable reports</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Built with ❤️ using FastAPI + Google Gemini AI</footer>
+
+<script>
+  marked.setOptions({
+    highlight: function(code, lang){
+      const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+      return hljs.highlight(code, {language}).value;
+    }
+  });
+
+  function showTab(name){
+    document.getElementById('tab-review').style.display = name==='review' ? 'block':'none';
+    document.getElementById('tab-reports').style.display = name==='reports' ? 'block':'none';
+    document.getElementById('tab-about').style.display = name==='about' ? 'block':'none';
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById(`tab-${name}-btn`).classList.add('active');
+    if(name==='reports') loadReports();
+  }
+
+  async function uploadFiles(){
+    const files = document.getElementById('files').files;
+    const language = document.getElementById('language').value;
+    if(!files.length){ alert('Pick file'); return; }
+    const fd = new FormData();
+    for(let i=0;i<files.length;i++) fd.append('files', files[i]);
+    fd.append('language', language);
+    document.getElementById('loading').style.display='block';
+
+    const res = await fetch('/review/', { method: 'POST', body: fd });
+    const data = await res.json();
+    document.getElementById('loading').style.display='none';
+    const out = document.getElementById('results'); out.innerHTML='';
+
+    for(const [name, report] of Object.entries(data)){
+      const d = document.createElement('div');
+      d.className = 'review-box';
+
+      // Normal review
+      let reviewHTML = `<h3>${name} <small class="small">(${language})</small></h3>`;
+      reviewHTML += marked.parse(report.review_text || report);
+
+      // Perfect Code section (if provided by backend)
+      if(report.perfect_code){
+        reviewHTML += `<details style="margin-top:12px">
+                         <summary>💎 Perfect Code</summary>
+                         <pre>${marked.parse(report.perfect_code)}</pre>
+                       </details>`;
+      }
+
+      reviewHTML += `<div style="margin-top:8px">
+                       <button onclick="downloadLatest('${name}')">Download</button>
+                     </div>`;
+
+      d.innerHTML = reviewHTML;
+      out.appendChild(d);
+    }
+  }
+
+  async function loadReports(){
+    const res = await fetch('/reports/');
+    const data = await res.json();
+    const container = document.getElementById('pastReports'); container.innerHTML='';
+    data.forEach(r=>{
+      const el = document.createElement('div'); el.className='review-box';
+      el.innerHTML = `<h4>${r.filename} <small class="small">(${r.language})</small></h4>${marked.parse(r.report)}<div style="margin-top:6px"><a href="/reports/${r.id}/download">Download</a></div>`;
+      container.appendChild(el);
+    });
+  }
+
+  function downloadLatest(filename){
+    alert('Use Past Reports tab to download saved reports (or implement linking by filename).');
+  }
+</script>
+</body>
+</html>
