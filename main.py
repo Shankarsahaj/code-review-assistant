@@ -9,14 +9,16 @@ from typing import List
 import shutil, os, io
 from sqlalchemy.orm import Session
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse, HTMLResponse
 from models import ReviewReport, SessionLocal
 from llm_analyzer import analyze_code_with_llm
 
 app = FastAPI(title="Code Review Assistant API")
 
-# Serve static frontend
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Serve static frontend (only if directory exists)
+import os
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Simple API key - for demo only. Put SECRET_API_KEY in your .env if you enable it.
 DEMO_API_KEY = os.getenv("DEMO_API_KEY", None)
@@ -104,4 +106,16 @@ def download_report(report_id: int, db: Session = Depends(get_db)):
 
 @app.get("/")
 def read_root():
-    return FileResponse(os.path.join("static", "index.html"))
+    if os.path.exists(os.path.join("static", "index.html")):
+        return FileResponse(os.path.join("static", "index.html"))
+    else:
+        # Fallback HTML if static files not available
+        return HTMLResponse("""
+<!DOCTYPE html>
+<html><head><title>Code Review Assistant</title></head>
+<body>
+<h1>🚀 AI Code Review Assistant</h1>
+<p>API is running! Use the /review/ endpoint to analyze code.</p>
+<p>Static files not found. Please ensure the static directory is uploaded.</p>
+</body></html>
+        """)
